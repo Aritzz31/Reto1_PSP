@@ -22,7 +22,7 @@ public class App extends Application {
         stage.setScene(scene);
         stage.setTitle("Chat multiusuario");
         stage.setResizable(false);
-        stage.getIcons().add(new Image("file:favicon.ico"));
+        stage.getIcons().add(new Image(App.class.getResourceAsStream("icon/favicon.png")));
         stage.show();
     }
 
