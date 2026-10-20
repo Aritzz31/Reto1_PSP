@@ -1,9 +1,10 @@
-package com.tartanga.chatmultiusuario;
+package com.tartanga;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -17,8 +18,11 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        scene = new Scene(loadFXML("primary"), 640, 480);
+        scene = new Scene(loadFXML("main"), 950, 500);
         stage.setScene(scene);
+        stage.setTitle("Chat multiusuario");
+        stage.setResizable(false);
+        stage.getIcons().add(new Image("file:favicon.ico"));
         stage.show();
     }
 
