@@ -1,5 +1,6 @@
 package com.tartanga;
 
+import java.io.IOException;
 import javafx.application.Platform;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -13,6 +14,7 @@ public class Cliente {
     private ObjectInputStream entrada;
     private String usuario;
     private Thread hiloEscucha;
+    private volatile boolean conectado = false;
 
     private Consumer<Mensaje> onMensajeRecibido;
     private Consumer<Mensaje> onListaUsuariosActualizada;
@@ -36,35 +38,37 @@ public class Cliente {
             this.usuario = usuario;
             salida = new ObjectOutputStream(socket.getOutputStream());
             entrada = new ObjectInputStream(socket.getInputStream());
+            conectado = true;
 
             enviarMensaje(new Mensaje(Mensaje.Tipo.CONEXION, usuario, "Servidor", "Solicitud de conexión"));
 
             hiloEscucha = new Thread(() -> {
                 try {
-                    while (true) {
+                    while (conectado) {
                         Mensaje msj = (Mensaje) entrada.readObject();
 
-                        if (msj.getTipo() == Mensaje.Tipo.LISTA_USUARIOS) {
-                            if (onListaUsuariosActualizada != null) {
-                                Platform.runLater(() -> onListaUsuariosActualizada.accept(msj));
-                            }
-                        } else if (msj.getTipo() == Mensaje.Tipo.DESCONEXION) {
-                            cerrarConexion();
-                            break;
-                        } else {
-                            if (onMensajeRecibido != null) {
-                                Platform.runLater(() -> onMensajeRecibido.accept(msj));
-                            }
+                        switch (msj.getTipo()) {
+                            case Mensaje.Tipo.LISTA_USUARIOS:
+                                if (onListaUsuariosActualizada != null) {
+                                    Platform.runLater(() -> onListaUsuariosActualizada.accept(msj));
+                                }
+                            case Mensaje.Tipo.DESCONEXION:
+                                cerrarConexion();
+                                break;
+                            default:
+                                if (onMensajeRecibido != null) {
+                                    Platform.runLater(() -> onMensajeRecibido.accept(msj));
+                                }
                         }
                     }
-                } catch (Exception e) {
+                } catch (IOException | ClassNotFoundException e) {
                     cerrarConexion();
                 }
             });
             hiloEscucha.setDaemon(true);
             hiloEscucha.start();
             return true;
-        } catch (Exception e) {
+        } catch (IOException e) {
             System.err.println("Error al conectar: " + e.getMessage());
             return false;
         }
@@ -83,7 +87,7 @@ public class Cliente {
                 salida.flush();
                 salida.reset();
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             System.err.println("Error al enviar mensaje: " + e.getMessage());
         }
     }
@@ -93,7 +97,11 @@ public class Cliente {
         cerrarConexion();
     }
 
-    private void cerrarConexion() {
+    private synchronized void cerrarConexion() {
+        if (!conectado) {
+            return;
+        }
+        conectado = false;
         try {
             if (socket != null) {
                 socket.close();
@@ -101,7 +109,7 @@ public class Cliente {
             if (onDesconexion != null) {
                 Platform.runLater(onDesconexion);
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             System.err.println("Error al cerrar conexión.");
         }
     }

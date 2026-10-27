@@ -11,10 +11,10 @@ public class Mensaje implements Serializable {
         CONEXION, DESCONEXION, MENSAJE_PUBLICO, MENSAJE_PRIVADO, LISTA_USUARIOS
     }
 
-    private Tipo tipo;
-    private String remitente;
-    private String destinatario;
-    private String contenido;
+    private final Tipo tipo;
+    private final String remitente;
+    private final String destinatario;
+    private final String contenido;
     private List<String> usuariosActivos;
 
     public Mensaje(Tipo tipo, String remitente, String destinatario, String contenido) {

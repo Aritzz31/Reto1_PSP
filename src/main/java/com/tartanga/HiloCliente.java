@@ -1,5 +1,6 @@
 package com.tartanga;
 
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
@@ -30,23 +31,27 @@ public class HiloCliente extends Thread {
                 if (chat.agregarCliente(nombreUsuario, salida)) {
                     chat.enviarMensajePublico(new Mensaje(Mensaje.Tipo.MENSAJE_PUBLICO, "Servidor", "Todos", nombreUsuario + " se ha unido al chat."));
 
+                    OUTER:
                     while (true) {
                         Mensaje msj = (Mensaje) entrada.readObject();
-                        if (msj.getTipo() == Mensaje.Tipo.DESCONEXION) {
-                            break;
-                        } else if (msj.getTipo() == Mensaje.Tipo.MENSAJE_PRIVADO) {
-                            chat.enviarMensajePrivado(msj);
-                        } else if (msj.getTipo() == Mensaje.Tipo.MENSAJE_PUBLICO) {
-                            chat.enviarMensajePublico(msj);
+                        switch (msj.getTipo()) {
+                            case DESCONEXION -> {
+                                break OUTER;
+                            }
+                            case MENSAJE_PRIVADO ->
+                                chat.enviarMensajePrivado(msj);
+                            case MENSAJE_PUBLICO ->
+                                chat.enviarMensajePublico(msj);
+                            default -> {
+                            }
                         }
                     }
                 } else {
-                    // Si el nombre ya está en uso, informamos y cerramos
                     salida.writeObject(new Mensaje(Mensaje.Tipo.DESCONEXION, "Servidor", nombreUsuario, "El usuario ya está en uso."));
                     salida.flush();
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException | ClassNotFoundException e) {
             System.out.println("Cliente " + (nombreUsuario != null ? nombreUsuario : "desconocido") + " desconectado.");
         } finally {
             if (nombreUsuario != null) {
@@ -55,7 +60,7 @@ public class HiloCliente extends Thread {
             }
             try {
                 socketCliente.close();
-            } catch (Exception e) {
+            } catch (IOException e) {
                 System.out.println("Error cerrando socket: " + e.getMessage());
             }
         }

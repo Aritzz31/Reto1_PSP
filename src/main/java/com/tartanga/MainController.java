@@ -40,9 +40,12 @@ public class MainController {
     private ObservableList<String> mensajesObList;
     private ObservableList<String> usuariosActivos;
 
+    @FXML
     public void initialize() {
         mensajesObList = FXCollections.observableArrayList();
         lstMensajes.setItems(mensajesObList);
+
+        lstMensajes.setStyle("-fx-control-inner-background-alt: -fx-control-inner-background;");
 
         usuariosActivos = FXCollections.observableArrayList();
         cmbPrivateUser.setItems(usuariosActivos);
@@ -78,11 +81,24 @@ public class MainController {
         });
 
         cliente.setOnListaUsuariosActualizada(msj -> {
+            String seleccionadoAnterior = cmbPrivateUser.getValue();
             usuariosActivos.clear();
+
             for (String u : msj.getUsuariosActivos()) {
                 if (!u.equals(txtUser.getText())) {
                     usuariosActivos.add(u);
                 }
+            }
+
+            if (!usuariosActivos.isEmpty()) {
+                cmbPrivateUser.setPromptText("");
+                if (seleccionadoAnterior != null && usuariosActivos.contains(seleccionadoAnterior)) {
+                    cmbPrivateUser.setValue(seleccionadoAnterior);
+                } else {
+                    cmbPrivateUser.getSelectionModel().selectFirst();
+                }
+            } else {
+                cmbPrivateUser.setPromptText("Usuario");
             }
         });
 
@@ -95,6 +111,7 @@ public class MainController {
             lblConnected.setText("Conectado");
             lblConnected.setTextFill(javafx.scene.paint.Color.GREEN);
             estadoInterfaz(true);
+            mensajesObList.clear();
         } else {
             agregarMensajeUI("Sistema: No se pudo conectar al servidor.");
         }
@@ -148,6 +165,7 @@ public class MainController {
             lblConnected.setText("No conectado");
             lblConnected.setTextFill(javafx.scene.paint.Color.RED);
             usuariosActivos.clear();
+            cmbPrivateUser.setPromptText("Usuario");
         }
     }
 }
