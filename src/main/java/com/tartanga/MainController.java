@@ -49,6 +49,7 @@ public class MainController {
 
         usuariosActivos = FXCollections.observableArrayList();
         cmbPrivateUser.setItems(usuariosActivos);
+        cmbPrivateUser.disableProperty().bind(chkPrivate.disabledProperty().or(chkPrivate.selectedProperty().not()));
 
         btnConnect.setOnAction(e -> conectar());
         btnDisconnect.setOnAction(e -> desconectar());
@@ -159,13 +160,13 @@ public class MainController {
         txtMessage.setDisable(!conectado);
         txtSend.setDisable(!conectado);
         chkPrivate.setDisable(!conectado);
-        cmbPrivateUser.setDisable(!conectado);
 
         if (!conectado) {
             lblConnected.setText("No conectado");
             lblConnected.setTextFill(javafx.scene.paint.Color.RED);
             usuariosActivos.clear();
             cmbPrivateUser.setPromptText("Usuario");
+            chkPrivate.setSelected(false);
         }
     }
 }
