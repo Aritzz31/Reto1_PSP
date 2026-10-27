@@ -1,11 +1,10 @@
 package com.tartanga;
 
-import java.io.IOException;
 import javafx.application.Platform;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.function.Consumer;
 
 public class Cliente {
 
@@ -13,23 +12,12 @@ public class Cliente {
     private ObjectOutputStream salida;
     private ObjectInputStream entrada;
     private String usuario;
-    private Thread hiloEscucha;
-    private volatile boolean conectado = false;
+    private Thread hilo;
+    private boolean conectado = false;
+    private final MainController controlador;
 
-    private Consumer<Mensaje> onMensajeRecibido;
-    private Consumer<Mensaje> onListaUsuariosActualizada;
-    private Runnable onDesconexion;
-
-    public void setOnMensajeRecibido(Consumer<Mensaje> onMensajeRecibido) {
-        this.onMensajeRecibido = onMensajeRecibido;
-    }
-
-    public void setOnListaUsuariosActualizada(Consumer<Mensaje> onListaUsuariosActualizada) {
-        this.onListaUsuariosActualizada = onListaUsuariosActualizada;
-    }
-
-    public void setOnDesconexion(Runnable onDesconexion) {
-        this.onDesconexion = onDesconexion;
+    public Cliente(MainController controlador) {
+        this.controlador = controlador;
     }
 
     public boolean conectar(String ip, int puerto, String usuario) {
@@ -43,31 +31,26 @@ public class Cliente {
 
             enviarMensaje(new Mensaje(Mensaje.Tipo.CONEXION, usuario, "Servidor", "Solicitud de conexión"));
 
-            hiloEscucha = new Thread(() -> {
+            hilo = new Thread(() -> {
                 try {
                     while (conectado) {
                         Mensaje msj = (Mensaje) entrada.readObject();
 
                         switch (msj.getTipo()) {
-                            case Mensaje.Tipo.LISTA_USUARIOS -> {
-                                if (onListaUsuariosActualizada != null) {
-                                    Platform.runLater(() -> onListaUsuariosActualizada.accept(msj));
-                                }
-                            }
-                            case Mensaje.Tipo.DESCONEXION -> cerrarConexion();
-                            default -> {
-                                if (onMensajeRecibido != null) {
-                                    Platform.runLater(() -> onMensajeRecibido.accept(msj));
-                                }
-                            }
+                            case LISTA_USUARIOS ->
+                                Platform.runLater(() -> controlador.actualizarUsuarios(msj));
+                            case DESCONEXION ->
+                                cerrarConexion();
+                            default ->
+                                Platform.runLater(() -> controlador.procesarMensaje(msj));
                         }
                     }
                 } catch (IOException | ClassNotFoundException e) {
                     cerrarConexion();
                 }
             });
-            hiloEscucha.setDaemon(true);
-            hiloEscucha.start();
+            hilo.setDaemon(true);
+            hilo.start();
             return true;
         } catch (IOException e) {
             System.err.println("Error al conectar: " + e.getMessage());
@@ -107,9 +90,7 @@ public class Cliente {
             if (socket != null) {
                 socket.close();
             }
-            if (onDesconexion != null) {
-                Platform.runLater(onDesconexion);
-            }
+            Platform.runLater(() -> controlador.notificarDesconexion());
         } catch (IOException e) {
             System.err.println("Error al cerrar conexión.");
         }

@@ -12,15 +12,11 @@ public class Chat {
     private final List<Mensaje> historial = new ArrayList<>();
 
     public synchronized boolean agregarCliente(String usuario, ObjectOutputStream out) {
-        if (clientes.containsKey(usuario)) {
+        if (clientes.putIfAbsent(usuario, out) != null) {
             return false;
         }
-        clientes.put(usuario, out);
 
-        for (Mensaje msj : historial) {
-            enviarPorFlujo(out, msj);
-        }
-
+        historial.forEach(msj -> enviar(out, msj));
         enviarListaUsuariosActivos();
         return true;
     }
@@ -32,38 +28,30 @@ public class Chat {
 
     public synchronized void enviarMensajePublico(Mensaje msj) {
         historial.add(msj);
-        for (ObjectOutputStream out : clientes.values()) {
-            enviarPorFlujo(out, msj);
-        }
+        difusion(msj);
     }
 
     public synchronized void enviarMensajePrivado(Mensaje msj) {
-        ObjectOutputStream outDestino = clientes.get(msj.getDestinatario());
-        if (outDestino != null) {
-            enviarPorFlujo(outDestino, msj);
-        }
-
+        enviar(clientes.get(msj.getDestinatario()), msj);
         if (!msj.getRemitente().equals(msj.getDestinatario())) {
-            ObjectOutputStream outRemitente = clientes.get(msj.getRemitente());
-            if (outRemitente != null) {
-                enviarPorFlujo(outRemitente, msj);
-            }
+            enviar(clientes.get(msj.getRemitente()), msj);
         }
     }
 
     private void enviarListaUsuariosActivos() {
         Mensaje msj = new Mensaje(Mensaje.Tipo.LISTA_USUARIOS, "Servidor", "Todos", null);
         msj.setUsuariosActivos(new ArrayList<>(clientes.keySet()));
-        enviarMensajePublicoLista(msj);
+        difusion(msj);
     }
 
-    private synchronized void enviarMensajePublicoLista(Mensaje msj) {
-        for (ObjectOutputStream out : clientes.values()) {
-            enviarPorFlujo(out, msj);
+    private synchronized void difusion(Mensaje msj) {
+        clientes.values().forEach(out -> enviar(out, msj));
+    }
+
+    private void enviar(ObjectOutputStream out, Mensaje msj) {
+        if (out == null) {
+            return;
         }
-    }
-
-    private void enviarPorFlujo(ObjectOutputStream out, Mensaje msj) {
         try {
             out.writeObject(msj);
             out.flush();

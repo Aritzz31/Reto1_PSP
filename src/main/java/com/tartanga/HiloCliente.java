@@ -10,8 +10,6 @@ public class HiloCliente extends Thread {
     private final Socket socketCliente;
     private final Chat chat;
     private String nombreUsuario;
-    private ObjectOutputStream salida;
-    private ObjectInputStream entrada;
 
     public HiloCliente(Socket socketCliente, Chat chat) {
         this.socketCliente = socketCliente;
@@ -21,35 +19,38 @@ public class HiloCliente extends Thread {
     @Override
     public void run() {
         try {
-            salida = new ObjectOutputStream(socketCliente.getOutputStream());
+            ObjectOutputStream salida = new ObjectOutputStream(socketCliente.getOutputStream());
             salida.flush();
-            entrada = new ObjectInputStream(socketCliente.getInputStream());
+            ObjectInputStream entrada = new ObjectInputStream(socketCliente.getInputStream());
 
             Mensaje msjInicial = (Mensaje) entrada.readObject();
-            if (msjInicial.getTipo() == Mensaje.Tipo.CONEXION) {
-                nombreUsuario = msjInicial.getRemitente();
 
-                if (chat.agregarCliente(nombreUsuario, salida)) {
-                    chat.enviarMensajePublico(new Mensaje(Mensaje.Tipo.MENSAJE_PUBLICO, "Servidor", "Todos", nombreUsuario + " se ha unido al chat."));
+            if (msjInicial.getTipo() != Mensaje.Tipo.CONEXION) {
+                return;
+            }
 
-                    OUTER:
-                    while (true) {
-                        Mensaje msj = (Mensaje) entrada.readObject();
-                        switch (msj.getTipo()) {
-                            case DESCONEXION -> {
-                                break OUTER;
-                            }
-                            case MENSAJE_PRIVADO ->
-                                chat.enviarMensajePrivado(msj);
-                            case MENSAJE_PUBLICO ->
-                                chat.enviarMensajePublico(msj);
-                            default -> {
-                            }
-                        }
+            nombreUsuario = msjInicial.getRemitente();
+
+            if (!chat.agregarCliente(nombreUsuario, salida)) {
+                salida.writeObject(new Mensaje(Mensaje.Tipo.DESCONEXION, "Servidor", nombreUsuario, "El usuario ya está en uso."));
+                salida.flush();
+                return;
+            }
+
+            chat.enviarMensajePublico(new Mensaje(Mensaje.Tipo.MENSAJE_PUBLICO, "Servidor", "Todos", nombreUsuario + " se ha unido al chat."));
+
+            while (true) {
+                Mensaje msj = (Mensaje) entrada.readObject();
+                switch (msj.getTipo()) {
+                    case DESCONEXION -> {
+                        return;
                     }
-                } else {
-                    salida.writeObject(new Mensaje(Mensaje.Tipo.DESCONEXION, "Servidor", nombreUsuario, "El usuario ya está en uso."));
-                    salida.flush();
+                    case MENSAJE_PRIVADO ->
+                        chat.enviarMensajePrivado(msj);
+                    case MENSAJE_PUBLICO ->
+                        chat.enviarMensajePublico(msj);
+                    default -> {
+                    }
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
@@ -60,7 +61,9 @@ public class HiloCliente extends Thread {
                 chat.enviarMensajePublico(new Mensaje(Mensaje.Tipo.MENSAJE_PUBLICO, "Servidor", "Todos", nombreUsuario + " ha abandonado el chat."));
             }
             try {
-                socketCliente.close();
+                if (socketCliente != null) {
+                    socketCliente.close();
+                }
             } catch (IOException e) {
                 System.out.println("Error cerrando socket: " + e.getMessage());
             }

@@ -13,9 +13,9 @@ public class Servidor {
         Chat chat = new Chat();
 
         try (ServerSocket serverSocket = new ServerSocket(puerto)) {
-            String ipLocal = "Desconocida";
+            String ipServidor = "Desconocida";
             try {
-                ipLocal = InetAddress.getLocalHost().getHostAddress();
+                ipServidor = InetAddress.getLocalHost().getHostAddress();
             } catch (UnknownHostException ex) {
                 System.err.println("No se pudo determinar la IP de la máquina local.");
             }
@@ -23,7 +23,7 @@ public class Servidor {
             System.out.println("=========================================");
             System.out.println("       Servidor de Chat Iniciado       ");
             System.out.println("=========================================");
-            System.out.println("IP del Servidor : " + ipLocal);
+            System.out.println("IP del Servidor : " + ipServidor);
             System.out.println("Puerto          : " + puerto);
             System.out.println("=========================================");
             System.out.println("Esperando clientes...");

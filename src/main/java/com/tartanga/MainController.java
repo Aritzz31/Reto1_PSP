@@ -1,6 +1,7 @@
 package com.tartanga;
 
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -10,6 +11,11 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
+import javafx.scene.control.ListCell;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontPosture;
+import javafx.scene.text.FontWeight;
 
 public class MainController {
 
@@ -45,11 +51,49 @@ public class MainController {
         mensajesObList = FXCollections.observableArrayList();
         lstMensajes.setItems(mensajesObList);
 
+        lstMensajes.setCellFactory(listView -> new ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+
+                    if (item.startsWith("Sistema:") || item.startsWith("[Servidor]:")) {
+                        setTextFill(Color.GRAY);
+                        setFont(Font.font("System", FontPosture.ITALIC, 12));
+                    } else if (item.startsWith("[Privado")) {
+                        setTextFill(Color.DARKMAGENTA);
+                        setFont(Font.font("System", FontWeight.BOLD, 12));
+                    } else if (item.startsWith("[Tú]")) {
+                        setTextFill(Color.DARKBLUE);
+                        setFont(Font.font("System", FontWeight.BOLD, 12));
+                    } else {
+                        setTextFill(Color.BLACK);
+                        setFont(Font.font("System", FontWeight.NORMAL, 12));
+                    }
+                }
+            }
+        });
+
         lstMensajes.setStyle("-fx-control-inner-background-alt: -fx-control-inner-background;");
 
         usuariosActivos = FXCollections.observableArrayList();
         cmbPrivateUser.setItems(usuariosActivos);
         cmbPrivateUser.disableProperty().bind(chkPrivate.disabledProperty().or(chkPrivate.selectedProperty().not()));
+
+        usuariosActivos.addListener((ListChangeListener.Change<? extends String> c) -> {
+            boolean sinUsuarios = usuariosActivos.isEmpty();
+            chkPrivate.setDisable(sinUsuarios);
+            if (sinUsuarios) {
+                chkPrivate.setSelected(false);
+            }
+        });
+
+        chkPrivate.setDisable(true);
 
         btnConnect.setOnAction(e -> conectar());
         btnDisconnect.setOnAction(e -> desconectar());
@@ -74,61 +118,14 @@ public class MainController {
             return;
         }
 
-        cliente = new Cliente();
+        mensajesObList.clear();
 
-        cliente.setOnMensajeRecibido(msj -> {
-            String miUsuario = txtUser.getText();
-            String prefix;
-
-            if (msj.getRemitente().equals(miUsuario)) {
-                if (msj.getTipo() == Mensaje.Tipo.MENSAJE_PRIVADO) {
-                    prefix = "[Privado para " + msj.getDestinatario() + "]";
-                } else {
-                    prefix = "[Tú]";
-                }
-            } else {
-                if (msj.getTipo() == Mensaje.Tipo.MENSAJE_PRIVADO) {
-                    prefix = "[Privado de " + msj.getRemitente() + "]";
-                } else {
-                    prefix = "[" + msj.getRemitente() + "]";
-                }
-            }
-
-            agregarMensajeUI(prefix + ": " + msj.getContenido());
-        });
-
-        cliente.setOnListaUsuariosActualizada(msj -> {
-            String seleccionadoAnterior = cmbPrivateUser.getValue();
-            usuariosActivos.clear();
-
-            for (String u : msj.getUsuariosActivos()) {
-                if (!u.equals(txtUser.getText())) {
-                    usuariosActivos.add(u);
-                }
-            }
-
-            if (!usuariosActivos.isEmpty()) {
-                cmbPrivateUser.setPromptText("");
-                if (seleccionadoAnterior != null && usuariosActivos.contains(seleccionadoAnterior)) {
-                    cmbPrivateUser.setValue(seleccionadoAnterior);
-                } else {
-                    cmbPrivateUser.getSelectionModel().selectFirst();
-                }
-            } else {
-                cmbPrivateUser.setPromptText("Usuario");
-            }
-        });
-
-        cliente.setOnDesconexion(() -> {
-            agregarMensajeUI("Sistema: Desconectado del servidor.");
-            estadoInterfaz(false);
-        });
+        cliente = new Cliente(this);
 
         if (cliente.conectar(ip, puerto, usuario)) {
             lblConnected.setText("Conectado");
             lblConnected.setTextFill(javafx.scene.paint.Color.GREEN);
             estadoInterfaz(true);
-            mensajesObList.clear();
         } else {
             agregarMensajeUI("Sistema: No se pudo conectar al servidor.");
         }
@@ -175,7 +172,6 @@ public class MainController {
         btnDisconnect.setDisable(!conectado);
         txtMessage.setDisable(!conectado);
         txtSend.setDisable(!conectado);
-        chkPrivate.setDisable(!conectado);
 
         if (!conectado) {
             lblConnected.setText("No conectado");
@@ -184,5 +180,39 @@ public class MainController {
             cmbPrivateUser.setPromptText("Usuario");
             chkPrivate.setSelected(false);
         }
+    }
+
+    public void procesarMensaje(Mensaje msj) {
+        boolean soyYo = msj.getRemitente().equals(txtUser.getText());
+
+        String prefix = switch (msj.getTipo()) {
+            case MENSAJE_PRIVADO ->
+                soyYo ? "[Privado para " + msj.getDestinatario() + "]" : "[Privado de " + msj.getRemitente() + "]";
+            default ->
+                soyYo ? "[Tú]" : "[" + msj.getRemitente() + "]";
+        };
+
+        agregarMensajeUI(prefix + ": " + msj.getContenido());
+    }
+
+    public void actualizarUsuarios(Mensaje msj) {
+        String seleccionado = cmbPrivateUser.getValue();
+        usuariosActivos.clear();
+
+        msj.getUsuariosActivos().stream()
+                .filter(u -> !u.equals(txtUser.getText()))
+                .forEach(usuariosActivos::add);
+
+        if (!usuariosActivos.isEmpty()) {
+            cmbPrivateUser.setPromptText("");
+            cmbPrivateUser.setValue(usuariosActivos.contains(seleccionado) ? seleccionado : usuariosActivos.get(0));
+        } else {
+            cmbPrivateUser.setPromptText("Usuario");
+        }
+    }
+
+    public void notificarDesconexion() {
+        agregarMensajeUI("Sistema: Desconectado del servidor.");
+        estadoInterfaz(false);
     }
 }
