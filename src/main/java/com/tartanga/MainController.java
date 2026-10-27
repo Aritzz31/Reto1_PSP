@@ -77,7 +77,23 @@ public class MainController {
         cliente = new Cliente();
 
         cliente.setOnMensajeRecibido(msj -> {
-            String prefix = msj.getTipo() == Mensaje.Tipo.MENSAJE_PRIVADO ? "[Privado de " + msj.getRemitente() + "]" : "[" + msj.getRemitente() + "]";
+            String miUsuario = txtUser.getText();
+            String prefix;
+
+            if (msj.getRemitente().equals(miUsuario)) {
+                if (msj.getTipo() == Mensaje.Tipo.MENSAJE_PRIVADO) {
+                    prefix = "[Privado para " + msj.getDestinatario() + "]";
+                } else {
+                    prefix = "[Tú]";
+                }
+            } else {
+                if (msj.getTipo() == Mensaje.Tipo.MENSAJE_PRIVADO) {
+                    prefix = "[Privado de " + msj.getRemitente() + "]";
+                } else {
+                    prefix = "[" + msj.getRemitente() + "]";
+                }
+            }
+
             agregarMensajeUI(prefix + ": " + msj.getContenido());
         });
 
