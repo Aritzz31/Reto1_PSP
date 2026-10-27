@@ -22,6 +22,7 @@ public class HiloCliente extends Thread {
     public void run() {
         try {
             salida = new ObjectOutputStream(socketCliente.getOutputStream());
+            salida.flush();
             entrada = new ObjectInputStream(socketCliente.getInputStream());
 
             Mensaje msjInicial = (Mensaje) entrada.readObject();

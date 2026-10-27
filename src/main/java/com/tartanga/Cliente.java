@@ -37,6 +37,7 @@ public class Cliente {
             socket = new Socket(ip, puerto);
             this.usuario = usuario;
             salida = new ObjectOutputStream(socket.getOutputStream());
+            salida.flush();
             entrada = new ObjectInputStream(socket.getInputStream());
             conectado = true;
 
@@ -48,17 +49,17 @@ public class Cliente {
                         Mensaje msj = (Mensaje) entrada.readObject();
 
                         switch (msj.getTipo()) {
-                            case Mensaje.Tipo.LISTA_USUARIOS:
+                            case Mensaje.Tipo.LISTA_USUARIOS -> {
                                 if (onListaUsuariosActualizada != null) {
                                     Platform.runLater(() -> onListaUsuariosActualizada.accept(msj));
                                 }
-                            case Mensaje.Tipo.DESCONEXION:
-                                cerrarConexion();
-                                break;
-                            default:
+                            }
+                            case Mensaje.Tipo.DESCONEXION -> cerrarConexion();
+                            default -> {
                                 if (onMensajeRecibido != null) {
                                     Platform.runLater(() -> onMensajeRecibido.accept(msj));
                                 }
+                            }
                         }
                     }
                 } catch (IOException | ClassNotFoundException e) {

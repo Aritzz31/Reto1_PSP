@@ -36,7 +36,7 @@ public class Servidor {
                 hilo.start();
             }
         } catch (IOException e) {
-            System.err.println("Error fatal en el servidor: " + e.getMessage());
+            System.err.println("Error en el servidor: " + e.getMessage());
         }
     }
 }
