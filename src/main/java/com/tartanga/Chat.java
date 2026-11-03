@@ -5,36 +5,80 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Chat {
 
+    private static final Logger LOGGER = Logger.getLogger(Chat.class.getName());
     private final ConcurrentHashMap<String, ObjectOutputStream> clientes = new ConcurrentHashMap<>();
     private final List<Mensaje> historial = new ArrayList<>();
+    private final int maxClientes;
+    private final long inicio = System.currentTimeMillis();
+    private long ultimoMensaje = inicio;
 
-    public synchronized boolean agregarCliente(String usuario, ObjectOutputStream out) {
+    public Chat() {
+        this(10);
+    }
+
+    public Chat(int maxClientes) {
+        if (maxClientes < 1) {
+            throw new IllegalArgumentException("El máximo de clientes debe ser positivo.");
+        }
+        this.maxClientes = maxClientes;
+    }
+
+    public enum ResultadoConexion {
+        ACEPTADA, USUARIO_EN_USO, LIMITE_ALCANZADO
+    }
+
+    public synchronized ResultadoConexion registrarCliente(String usuario, ObjectOutputStream out) {
+        if (clientes.containsKey(usuario)) {
+            return ResultadoConexion.USUARIO_EN_USO;
+        }
+        if (clientes.size() >= maxClientes) {
+            return ResultadoConexion.LIMITE_ALCANZADO;
+        }
         if (clientes.putIfAbsent(usuario, out) != null) {
-            return false;
+            return ResultadoConexion.USUARIO_EN_USO;
         }
 
         historial.forEach(msj -> enviar(out, msj));
         enviarListaUsuariosActivos();
-        return true;
+        LOGGER.info(() -> "Cliente conectado: " + usuario + " (" + clientes.size() + "/" + maxClientes + ")");
+        return ResultadoConexion.ACEPTADA;
+    }
+
+    public synchronized boolean agregarCliente(String usuario, ObjectOutputStream out) {
+        return registrarCliente(usuario, out) == ResultadoConexion.ACEPTADA;
     }
 
     public synchronized void eliminarCliente(String usuario) {
-        clientes.remove(usuario);
-        enviarListaUsuariosActivos();
+        if (clientes.remove(usuario) != null) {
+            LOGGER.info(() -> "Cliente desconectado: " + usuario + " (" + clientes.size() + "/" + maxClientes + ")");
+            enviarListaUsuariosActivos();
+        }
     }
 
     public synchronized void enviarMensajePublico(Mensaje msj) {
         historial.add(msj);
+        ultimoMensaje = System.currentTimeMillis();
+        LOGGER.info(() -> "Mensaje público de " + msj.getRemitente());
         difusion(msj);
     }
 
     public synchronized void enviarMensajePrivado(Mensaje msj) {
-        enviar(clientes.get(msj.getDestinatario()), msj);
+        ObjectOutputStream destinatario = clientes.get(msj.getDestinatario());
+        ObjectOutputStream remitente = clientes.get(msj.getRemitente());
+        if (destinatario == null) {
+            enviarError(remitente, "El usuario '" + msj.getDestinatario() + "' no está conectado.");
+            return;
+        }
+        ultimoMensaje = System.currentTimeMillis();
+        LOGGER.info(() -> "Mensaje privado de " + msj.getRemitente() + " para " + msj.getDestinatario());
+        enviar(destinatario, msj);
         if (!msj.getRemitente().equals(msj.getDestinatario())) {
-            enviar(clientes.get(msj.getRemitente()), msj);
+            enviar(remitente, msj);
         }
     }
 
@@ -48,6 +92,10 @@ public class Chat {
         clientes.values().forEach(out -> enviar(out, msj));
     }
 
+    private void enviarError(ObjectOutputStream out, String contenido) {
+        enviar(out, new Mensaje(Mensaje.Tipo.ERROR, "Servidor", "Todos", contenido));
+    }
+
     private void enviar(ObjectOutputStream out, Mensaje msj) {
         if (out == null) {
             return;
@@ -57,7 +105,15 @@ public class Chat {
             out.flush();
             out.reset();
         } catch (IOException e) {
-            System.err.println("Error al enviar mensaje: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "Error al enviar mensaje al cliente", e);
         }
+    }
+
+    public synchronized String obtenerEstadisticas() {
+        long activo = (System.currentTimeMillis() - inicio) / 1000;
+        String ultimo = ultimoMensaje == inicio ? "ninguno"
+                : (System.currentTimeMillis() - ultimoMensaje) / 1000 + " s atrás";
+        return "clientes=" + clientes.size() + "/" + maxClientes
+                + ", tiempoActivo=" + activo + " s, últimoMensaje=" + ultimo;
     }
 }

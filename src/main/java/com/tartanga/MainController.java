@@ -10,7 +10,6 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
-import javafx.scene.input.KeyCode;
 import javafx.scene.control.ListCell;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -99,11 +98,10 @@ public class MainController {
         btnDisconnect.setOnAction(e -> desconectar());
         txtSend.setOnAction(e -> enviarMensaje());
 
-        txtMessage.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER) {
-                enviarMensaje();
-            }
-        });
+        txtIP.setOnAction(e -> conectar());
+        txtPort.setOnAction(e -> conectar());
+        txtUser.setOnAction(e -> conectar());
+        txtMessage.setOnAction(e -> enviarMensaje());
 
         estadoInterfaz(false);
     }
@@ -183,6 +181,10 @@ public class MainController {
     }
 
     public void procesarMensaje(Mensaje msj) {
+        if (msj.getTipo() == Mensaje.Tipo.ERROR) {
+            notificarError(msj.getContenido());
+            return;
+        }
         boolean soyYo = msj.getRemitente().equals(txtUser.getText());
 
         String prefix = switch (msj.getTipo()) {
@@ -214,5 +216,9 @@ public class MainController {
     public void notificarDesconexion() {
         agregarMensajeUI("Sistema: Desconectado del servidor.");
         estadoInterfaz(false);
+    }
+
+    public void notificarError(String mensaje) {
+        agregarMensajeUI("Sistema: " + mensaje);
     }
 }

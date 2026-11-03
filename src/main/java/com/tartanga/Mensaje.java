@@ -8,7 +8,7 @@ public class Mensaje implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public enum Tipo {
-        CONEXION, DESCONEXION, MENSAJE_PUBLICO, MENSAJE_PRIVADO, LISTA_USUARIOS
+        CONEXION, DESCONEXION, MENSAJE_PUBLICO, MENSAJE_PRIVADO, LISTA_USUARIOS, ERROR
     }
 
     private final Tipo tipo;

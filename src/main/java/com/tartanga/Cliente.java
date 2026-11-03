@@ -39,8 +39,12 @@ public class Cliente {
                         switch (msj.getTipo()) {
                             case LISTA_USUARIOS ->
                                 Platform.runLater(() -> controlador.actualizarUsuarios(msj));
-                            case DESCONEXION ->
+                            case ERROR ->
+                                Platform.runLater(() -> controlador.procesarMensaje(msj));
+                            case DESCONEXION -> {
+                                Platform.runLater(() -> controlador.procesarMensaje(msj));
                                 cerrarConexion();
+                            }
                             default ->
                                 Platform.runLater(() -> controlador.procesarMensaje(msj));
                         }
@@ -72,7 +76,7 @@ public class Cliente {
                 salida.reset();
             }
         } catch (IOException e) {
-            System.err.println("Error al enviar mensaje: " + e.getMessage());
+            Platform.runLater(() -> controlador.notificarError("No se pudo enviar el mensaje: " + e.getMessage()));
         }
     }
 

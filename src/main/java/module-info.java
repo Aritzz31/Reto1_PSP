@@ -4,4 +4,5 @@ module com.tartanga {
 
     opens com.tartanga to javafx.fxml;
     exports com.tartanga;
+    requires java.logging;
 }

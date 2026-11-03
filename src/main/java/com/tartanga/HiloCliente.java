@@ -4,43 +4,69 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class HiloCliente extends Thread {
 
+    private static final Logger LOGGER = Logger.getLogger(HiloCliente.class.getName());
     private final Socket socketCliente;
     private final Chat chat;
     private String nombreUsuario;
+    private boolean registrado;
 
     public HiloCliente(Socket socketCliente, Chat chat) {
         this.socketCliente = socketCliente;
         this.chat = chat;
     }
 
+    public void detener() {
+        try {
+            socketCliente.close();
+        } catch (IOException e) {
+            LOGGER.log(Level.FINE, "El socket del cliente ya estaba cerrado", e);
+        }
+    }
+
     @Override
     public void run() {
+        ObjectOutputStream salida = null;
+        ObjectInputStream entrada = null;
         try {
-            ObjectOutputStream salida = new ObjectOutputStream(socketCliente.getOutputStream());
+            salida = new ObjectOutputStream(socketCliente.getOutputStream());
             salida.flush();
-            ObjectInputStream entrada = new ObjectInputStream(socketCliente.getInputStream());
+            entrada = new ObjectInputStream(socketCliente.getInputStream());
 
             Mensaje msjInicial = (Mensaje) entrada.readObject();
 
-            if (msjInicial.getTipo() != Mensaje.Tipo.CONEXION) {
+            if (msjInicial == null
+                    || msjInicial.getTipo() != Mensaje.Tipo.CONEXION
+                    || msjInicial.getRemitente() == null
+                    || msjInicial.getRemitente().isBlank()) {
+                enviarError(salida, "Solicitud de conexión no válida.");
                 return;
             }
 
             nombreUsuario = msjInicial.getRemitente();
 
-            if (!chat.agregarCliente(nombreUsuario, salida)) {
-                salida.writeObject(new Mensaje(Mensaje.Tipo.DESCONEXION, "Servidor", nombreUsuario, "El usuario ya está en uso."));
-                salida.flush();
+            Chat.ResultadoConexion resultado = chat.registrarCliente(nombreUsuario, salida);
+            if (resultado != Chat.ResultadoConexion.ACEPTADA) {
+                String motivo = resultado == Chat.ResultadoConexion.LIMITE_ALCANZADO
+                        ? "Se ha alcanzado el máximo de conexiones."
+                        : "El usuario ya está en uso.";
+                enviarError(salida, motivo);
                 return;
             }
+            registrado = true;
 
-            chat.enviarMensajePublico(new Mensaje(Mensaje.Tipo.MENSAJE_PUBLICO, "Servidor", "Todos", nombreUsuario + " se ha unido al chat."));
+            chat.enviarMensajePublico(new Mensaje(Mensaje.Tipo.MENSAJE_PUBLICO, "Servidor", "Todos",
+                    nombreUsuario + " se ha unido al chat."));
 
             while (true) {
                 Mensaje msj = (Mensaje) entrada.readObject();
+                if (msj == null) {
+                    continue;
+                }
                 switch (msj.getTipo()) {
                     case DESCONEXION -> {
                         return;
@@ -54,19 +80,32 @@ public class HiloCliente extends Thread {
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
-            System.out.println("Cliente " + (nombreUsuario != null ? nombreUsuario : "desconocido") + " desconectado.");
+            LOGGER.log(Level.INFO, "Cliente " + (nombreUsuario != null ? nombreUsuario : "desconocido")
+                    + " desconectado", e);
         } finally {
-            if (nombreUsuario != null) {
+            if (registrado && nombreUsuario != null) {
                 chat.eliminarCliente(nombreUsuario);
-                chat.enviarMensajePublico(new Mensaje(Mensaje.Tipo.MENSAJE_PUBLICO, "Servidor", "Todos", nombreUsuario + " ha abandonado el chat."));
+                chat.enviarMensajePublico(new Mensaje(Mensaje.Tipo.MENSAJE_PUBLICO, "Servidor", "Todos",
+                        nombreUsuario + " ha abandonado el chat."));
             }
             try {
+                if (entrada != null) {
+                    entrada.close();
+                }
+                if (salida != null) {
+                    salida.close();
+                }
                 if (socketCliente != null) {
                     socketCliente.close();
                 }
             } catch (IOException e) {
-                System.out.println("Error cerrando socket: " + e.getMessage());
+                LOGGER.log(Level.WARNING, "Error cerrando el socket del cliente", e);
             }
         }
+    }
+
+    private void enviarError(ObjectOutputStream salida, String contenido) throws IOException {
+        salida.writeObject(new Mensaje(Mensaje.Tipo.ERROR, "Servidor", nombreUsuario, contenido));
+        salida.flush();
     }
 }
