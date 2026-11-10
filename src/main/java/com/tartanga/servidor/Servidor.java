@@ -20,6 +20,9 @@ import java.util.logging.LogManager;
 import com.tartanga.cliente.model.*;
 import com.tartanga.cliente.view.Chat;
 
+/**
+ * Inicia el servidor de chat y acepta conexiones de clientes.
+ */
 public class Servidor {
 
     private static final Logger LOGGER = Logger.getLogger(Servidor.class.getName());
@@ -27,6 +30,11 @@ public class Servidor {
     private static final long INTERVALO_MONITOR_MS = 60_000;
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    /**
+     * Configura el chat, inicia el monitor y atiende las conexiones entrantes.
+     *
+     * @param args argumentos de inicio (no utilizados)
+     */
     public static void main(String[] args) {
         configurarLogs();
         int puerto = 5000;
@@ -37,6 +45,9 @@ public class Servidor {
             Thread monitor = crearMonitor(chat);
             monitor.start();
             Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+                /**
+                 * Detiene el monitor y cierra las conexiones durante el apagado.
+                 */
                 @Override
                 public void run() {
                     monitor.interrupt();
@@ -65,7 +76,8 @@ public class Servidor {
 
             while (true) {
                 Socket socketCliente = serverSocket.accept();
-                LOGGER.log(Level.INFO, "Nueva conexi\u00f3n recibida desde: {0}", socketCliente.getInetAddress().getHostAddress());
+                LOGGER.log(Level.INFO, "Nueva conexi\u00f3n recibida desde: {0}",
+                        socketCliente.getInetAddress().getHostAddress());
 
                 HiloCliente hilo = new HiloCliente(socketCliente, chat);
                 clientes.add(hilo);
@@ -76,8 +88,17 @@ public class Servidor {
         }
     }
 
+    /**
+     * Crea un hilo que registra periódicamente las estadísticas del chat.
+     *
+     * @param chat gestor del chat cuyas estadísticas se consultan
+     * @return hilo monitor del servidor
+     */
     private static Thread crearMonitor(Chat chat) {
         return new Thread(new Runnable() {
+            /**
+             * Registra el estado del chat hasta que se interrumpe el hilo.
+             */
             @Override
             public void run() {
                 while (!Thread.currentThread().isInterrupted()) {
@@ -92,13 +113,28 @@ public class Servidor {
         }, "monitor-servidor");
     }
 
+    /**
+     * Configura el formato y los destinos de los registros del servidor.
+     */
     private static void configurarLogs() {
         Logger loggerRaiz = LogManager.getLogManager().getLogger("");
         Formatter formatter = new Formatter() {
+            /**
+             * Formatea un registro con fecha, nivel, clase y mensaje.
+             *
+             * @param registro registro que se va a formatear
+             * @return línea de registro formateada
+             */
             @Override
             public String format(LogRecord registro) {
                 String clase = registro.getLoggerName();
-                int ultimaSeparacion = clase == null ? -1 : clase.lastIndexOf('.');
+                int ultimaSeparacion;
+                if (clase == null) {
+                    ultimaSeparacion = -1;
+                } else {
+                    ultimaSeparacion = clase.lastIndexOf('.');
+                }
+
                 if (ultimaSeparacion >= 0) {
                     clase = clase.substring(ultimaSeparacion + 1);
                 }

@@ -20,6 +20,9 @@ import javafx.event.EventHandler;
 import javafx.util.Callback;
 import com.tartanga.cliente.model.*;
 
+/**
+ * Controla la interfaz gráfica del chat y coordina sus acciones con el cliente.
+ */
 public class MainController implements ClienteListener {
 
     @FXML
@@ -49,15 +52,30 @@ public class MainController implements ClienteListener {
     private ObservableList<String> mensajesObList;
     private ObservableList<String> usuariosActivos;
 
+    /**
+     * Inicializa las listas, los estilos y los eventos de los controles gráficos.
+     */
     @FXML
     public void initialize() {
         mensajesObList = FXCollections.observableArrayList();
         lstMensajes.setItems(mensajesObList);
 
         lstMensajes.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
+            /**
+             * Crea celdas que presentan los mensajes con estilos según su tipo.
+             *
+             * @param listView lista a la que pertenece la celda
+             * @return celda configurada para mostrar mensajes
+             */
             @Override
             public ListCell<String> call(ListView<String> listView) {
                 return new ListCell<String>() {
+                    /**
+                     * Actualiza el texto y el estilo de una celda de mensaje.
+                     *
+                     * @param item mensaje que se muestra
+                     * @param empty indica si la celda está vacía
+                     */
                     @Override
                     protected void updateItem(String item, boolean empty) {
                         super.updateItem(item, empty);
@@ -94,6 +112,11 @@ public class MainController implements ClienteListener {
         cmbPrivateUser.disableProperty().bind(chkPrivate.disabledProperty().or(chkPrivate.selectedProperty().not()));
 
         usuariosActivos.addListener(new ListChangeListener<String>() {
+            /**
+             * Habilita o deshabilita el envío privado según los usuarios disponibles.
+             *
+             * @param cambio cambio producido en la lista de usuarios
+             */
             @Override
             public void onChanged(ListChangeListener.Change<? extends String> cambio) {
                 boolean sinUsuarios = usuariosActivos.isEmpty();
@@ -107,18 +130,33 @@ public class MainController implements ClienteListener {
         chkPrivate.setDisable(true);
 
         btnConnect.setOnAction(new EventHandler<ActionEvent>() {
+            /**
+             * Inicia la conexión al activar el botón correspondiente.
+             *
+             * @param evento evento de acción recibido
+             */
             @Override
             public void handle(ActionEvent evento) {
                 conectar();
             }
         });
         btnDisconnect.setOnAction(new EventHandler<ActionEvent>() {
+            /**
+             * Desconecta al cliente al activar el botón correspondiente.
+             *
+             * @param evento evento de acción recibido
+             */
             @Override
             public void handle(ActionEvent evento) {
                 desconectar();
             }
         });
         txtSend.setOnAction(new EventHandler<ActionEvent>() {
+            /**
+             * Envía el mensaje al activar el botón de envío.
+             *
+             * @param evento evento de acción recibido
+             */
             @Override
             public void handle(ActionEvent evento) {
                 enviarMensaje();
@@ -126,24 +164,44 @@ public class MainController implements ClienteListener {
         });
 
         txtIP.setOnAction(new EventHandler<ActionEvent>() {
+            /**
+             * Intenta conectar al confirmar la dirección IP.
+             *
+             * @param evento evento de acción recibido
+             */
             @Override
             public void handle(ActionEvent evento) {
                 conectar();
             }
         });
         txtPort.setOnAction(new EventHandler<ActionEvent>() {
+            /**
+             * Intenta conectar al confirmar el puerto.
+             *
+             * @param evento evento de acción recibido
+             */
             @Override
             public void handle(ActionEvent evento) {
                 conectar();
             }
         });
         txtUser.setOnAction(new EventHandler<ActionEvent>() {
+            /**
+             * Intenta conectar al confirmar el nombre de usuario.
+             *
+             * @param evento evento de acción recibido
+             */
             @Override
             public void handle(ActionEvent evento) {
                 conectar();
             }
         });
         txtMessage.setOnAction(new EventHandler<ActionEvent>() {
+            /**
+             * Envía el mensaje al confirmar su texto.
+             *
+             * @param evento evento de acción recibido
+             */
             @Override
             public void handle(ActionEvent evento) {
                 enviarMensaje();
@@ -153,9 +211,24 @@ public class MainController implements ClienteListener {
         estadoInterfaz(false);
     }
 
+    /**
+     * Valida los datos introducidos e intenta conectar con el servidor.
+     */
     private void conectar() {
-        String ip = txtIP.getText().isEmpty() ? "127.0.0.1" : txtIP.getText();
-        int puerto = txtPort.getText().isEmpty() ? 5000 : Integer.parseInt(txtPort.getText());
+        String ip;
+        if (txtIP.getText().isEmpty()) {
+            ip = "127.0.0.1";
+        } else {
+            ip = txtIP.getText();
+        }
+
+        int puerto;
+        if (txtPort.getText().isEmpty()) {
+            puerto = 5000;
+        } else {
+            puerto = Integer.parseInt(txtPort.getText());
+        }
+
         String usuario = txtUser.getText();
 
         if (usuario == null || usuario.trim().isEmpty()) {
@@ -176,6 +249,9 @@ public class MainController implements ClienteListener {
         }
     }
 
+    /**
+     * Valida y envía el texto como mensaje público o privado.
+     */
     private void enviarMensaje() {
         String texto = txtMessage.getText();
         if (texto == null || texto.trim().isEmpty()) {
@@ -197,17 +273,30 @@ public class MainController implements ClienteListener {
         txtMessage.clear();
     }
 
+    /**
+     * Solicita la desconexión del cliente actual.
+     */
     private void desconectar() {
         if (cliente != null) {
             cliente.desconectar();
         }
     }
 
+    /**
+     * Añade un mensaje a la lista y desplaza la vista hasta el último elemento.
+     *
+     * @param mensaje texto que se mostrará en la lista
+     */
     private void agregarMensajeUI(String mensaje) {
         mensajesObList.add(mensaje);
         lstMensajes.scrollTo(mensajesObList.size() - 1);
     }
 
+    /**
+     * Actualiza la disponibilidad de los controles según el estado de conexión.
+     *
+     * @param conectado indica si el cliente está conectado
+     */
     private void estadoInterfaz(boolean conectado) {
         txtIP.setDisable(conectado);
         txtPort.setDisable(conectado);
@@ -227,6 +316,11 @@ public class MainController implements ClienteListener {
         }
     }
 
+    /**
+     * Presenta en la interfaz un mensaje recibido del servidor.
+     *
+     * @param msj mensaje recibido
+     */
     public void procesarMensaje(Mensaje msj) {
         if (msj.getTipo() == Mensaje.Tipo.ERROR) {
             notificarError(msj.getContenido());
@@ -237,18 +331,30 @@ public class MainController implements ClienteListener {
         String prefix;
         switch (msj.getTipo()) {
             case MENSAJE_PRIVADO:
-                prefix = soyYo
-                        ? "[Privado para " + msj.getDestinatario() + "]"
-                        : "[Privado de " + msj.getRemitente() + "]";
+                if (soyYo) {
+                    prefix = "[Privado para " + msj.getDestinatario() + "]";
+                } else {
+                    prefix = "[Privado de " + msj.getRemitente() + "]";
+                }
                 break;
+
             default:
-                prefix = soyYo ? "[Tú]" : "[" + msj.getRemitente() + "]";
+                if (soyYo) {
+                    prefix = "[Tú]";
+                } else {
+                    prefix = "[" + msj.getRemitente() + "]";
+                }
                 break;
         }
 
         agregarMensajeUI(prefix + ": " + msj.getContenido());
     }
 
+    /**
+     * Actualiza los destinatarios privados con los usuarios conectados.
+     *
+     * @param msj mensaje que contiene la lista de usuarios activos
+     */
     public void actualizarUsuarios(Mensaje msj) {
         String seleccionado = cmbPrivateUser.getValue();
         usuariosActivos.clear();
@@ -261,17 +367,29 @@ public class MainController implements ClienteListener {
 
         if (!usuariosActivos.isEmpty()) {
             cmbPrivateUser.setPromptText("");
-            cmbPrivateUser.setValue(usuariosActivos.contains(seleccionado) ? seleccionado : usuariosActivos.get(0));
+            if (usuariosActivos.contains(seleccionado)) {
+                cmbPrivateUser.setValue(seleccionado);
+            } else {
+                cmbPrivateUser.setValue(usuariosActivos.get(0));
+            }
         } else {
             cmbPrivateUser.setPromptText("Usuario");
         }
     }
 
+    /**
+     * Informa de la desconexión y restaura el estado inicial de la interfaz.
+     */
     public void notificarDesconexion() {
         agregarMensajeUI("Sistema: Desconectado del servidor.");
         estadoInterfaz(false);
     }
 
+    /**
+     * Muestra un error recibido o producido por el cliente.
+     *
+     * @param mensaje descripción del error
+     */
     public void notificarError(String mensaje) {
         agregarMensajeUI("Sistema: " + mensaje);
     }

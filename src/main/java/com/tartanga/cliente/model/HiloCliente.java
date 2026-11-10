@@ -8,6 +8,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.tartanga.cliente.view.Chat;
 
+/**
+ * Atiende la conexión de un cliente y procesa sus mensajes en el servidor.
+ */
 public class HiloCliente extends Thread {
 
     private static final Logger LOGGER = Logger.getLogger(HiloCliente.class.getName());
@@ -16,11 +19,20 @@ public class HiloCliente extends Thread {
     private String nombreUsuario;
     private boolean registrado;
 
+    /**
+     * Crea un hilo para atender el socket de un cliente.
+     *
+     * @param socketCliente socket de comunicación con el cliente
+     * @param chat gestor compartido del chat
+     */
     public HiloCliente(Socket socketCliente, Chat chat) {
         this.socketCliente = socketCliente;
         this.chat = chat;
     }
 
+    /**
+     * Cierra el socket para detener la comunicación con el cliente.
+     */
     public void detener() {
         try {
             socketCliente.close();
@@ -29,6 +41,9 @@ public class HiloCliente extends Thread {
         }
     }
 
+    /**
+     * Registra al cliente, procesa sus mensajes y libera sus recursos al finalizar.
+     */
     @Override
     public void run() {
         ObjectOutputStream salida = null;
@@ -52,9 +67,13 @@ public class HiloCliente extends Thread {
 
             Chat.ResultadoConexion resultado = chat.registrarCliente(nombreUsuario, salida);
             if (resultado != Chat.ResultadoConexion.ACEPTADA) {
-                String motivo = resultado == Chat.ResultadoConexion.LIMITE_ALCANZADO
-                        ? "Se ha alcanzado el máximo de conexiones."
-                        : "El usuario ya está en uso.";
+                String motivo;
+                if (resultado == Chat.ResultadoConexion.LIMITE_ALCANZADO) {
+                    motivo = "Se ha alcanzado el máximo de conexiones.";
+                } else {
+                    motivo = "El usuario ya está en uso.";
+                }
+
                 enviarError(salida, motivo);
                 return;
             }
@@ -82,8 +101,17 @@ public class HiloCliente extends Thread {
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
-            LOGGER.log(Level.INFO, "Cliente " + (nombreUsuario != null ? nombreUsuario : "desconocido")
-                    + " desconectado", e);
+            String clienteDesconocido;
+            if (nombreUsuario != null) {
+                clienteDesconocido = nombreUsuario;
+            } else {
+                clienteDesconocido = "desconocido";
+            }
+
+            LOGGER.log(Level.INFO,
+                    "Cliente " + clienteDesconocido + " desconectado",
+                    e);
+
         } finally {
             if (registrado && nombreUsuario != null) {
                 chat.eliminarCliente(nombreUsuario);
@@ -106,6 +134,13 @@ public class HiloCliente extends Thread {
         }
     }
 
+    /**
+     * Envía al cliente un mensaje de error con el contenido indicado.
+     *
+     * @param salida flujo de salida del cliente
+     * @param contenido descripción del error
+     * @throws IOException si ocurre un error al escribir en el flujo
+     */
     private void enviarError(ObjectOutputStream salida, String contenido) throws IOException {
         salida.writeObject(new Mensaje(Mensaje.Tipo.ERROR, "Servidor", nombreUsuario, contenido));
         salida.flush();
