@@ -1,4 +1,6 @@
-package com.tartanga;
+package com.tartanga.cliente.controller;
+
+import com.tartanga.cliente.model.Mensaje;
 
 public interface ClienteListener {
 

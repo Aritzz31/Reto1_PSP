@@ -1,4 +1,4 @@
-package com.tartanga;
+package com.tartanga.cliente;
 
 public class Launcher {
 

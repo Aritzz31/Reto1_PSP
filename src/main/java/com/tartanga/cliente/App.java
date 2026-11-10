@@ -1,4 +1,4 @@
-package com.tartanga;
+package com.tartanga.cliente;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -22,7 +22,7 @@ public class App extends Application {
         stage.setScene(scene);
         stage.setTitle("Chat multiusuario");
         stage.setResizable(false);
-        stage.getIcons().add(new Image(App.class.getResourceAsStream("icon/favicon.png")));
+        stage.getIcons().add(new Image(App.class.getResourceAsStream("/com/tartanga/icon/favicon.png")));
         stage.show();
     }
 

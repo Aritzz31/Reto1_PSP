@@ -1,4 +1,4 @@
-package com.tartanga;
+package com.tartanga.servidor;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -16,6 +16,9 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.LogManager;
+
+import com.tartanga.cliente.model.*;
+import com.tartanga.cliente.view.Chat;
 
 public class Servidor {
 

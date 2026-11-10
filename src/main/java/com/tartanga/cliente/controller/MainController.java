@@ -1,4 +1,4 @@
-package com.tartanga;
+package com.tartanga.cliente.controller;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -18,6 +18,7 @@ import javafx.scene.text.FontWeight;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.util.Callback;
+import com.tartanga.cliente.model.*;
 
 public class MainController implements ClienteListener {
 

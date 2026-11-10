@@ -1,4 +1,4 @@
-package com.tartanga;
+package com.tartanga.cliente.model;
 
 import java.io.Serializable;
 import java.util.List;

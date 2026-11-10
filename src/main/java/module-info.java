@@ -1,8 +1,8 @@
-module com.tartanga {
+module com.tartanga.cliente {
     requires javafx.controls;
     requires javafx.fxml;
-
-    opens com.tartanga to javafx.fxml;
-    exports com.tartanga;
     requires java.logging;
+
+    opens com.tartanga.cliente.controller to javafx.fxml;
+    exports com.tartanga.cliente;
 }

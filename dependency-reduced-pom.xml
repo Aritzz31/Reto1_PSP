@@ -21,7 +21,7 @@
           <execution>
             <id>default-cli</id>
             <configuration>
-              <mainClass>com.tartanga/com.tartanga.App</mainClass>
+              <mainClass>com.tartanga.cliente/com.tartanga.cliente.App</mainClass>
               <options>
                 <option>--enable-native-access=javafx.graphics</option>
               </options>
@@ -43,7 +43,7 @@
               <shadedClassifierName>ejecutable</shadedClassifierName>
               <transformers>
                 <transformer>
-                  <mainClass>com.tartanga.Launcher</mainClass>
+                  <mainClass>com.tartanga.cliente.Launcher</mainClass>
                 </transformer>
               </transformers>
             </configuration>

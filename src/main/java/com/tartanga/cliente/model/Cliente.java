@@ -1,9 +1,10 @@
-package com.tartanga;
+package com.tartanga.cliente.model;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import com.tartanga.cliente.controller.*;
 
 public class Cliente {
 

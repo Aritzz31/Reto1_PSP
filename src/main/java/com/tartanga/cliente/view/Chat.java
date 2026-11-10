@@ -1,4 +1,4 @@
-package com.tartanga;
+package com.tartanga.cliente.view;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import com.tartanga.cliente.model.Mensaje;
 
 public class Chat {
 
