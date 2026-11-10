@@ -68,15 +68,16 @@ public class HiloCliente extends Thread {
                     continue;
                 }
                 switch (msj.getTipo()) {
-                    case DESCONEXION -> {
+                    case DESCONEXION:
                         return;
-                    }
-                    case MENSAJE_PRIVADO ->
+                    case MENSAJE_PRIVADO:
                         chat.enviarMensajePrivado(msj);
-                    case MENSAJE_PUBLICO ->
+                        break;
+                    case MENSAJE_PUBLICO:
                         chat.enviarMensajePublico(msj);
-                    default -> {
-                    }
+                        break;
+                    default:
+                        break;
                 }
             }
         } catch (IOException | ClassNotFoundException e) {

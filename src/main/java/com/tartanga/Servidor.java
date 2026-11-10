@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.logging.Formatter;
+import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -32,12 +33,17 @@ public class Servidor {
         try (ServerSocket serverSocket = new ServerSocket(puerto)) {
             Thread monitor = crearMonitor(chat);
             monitor.start();
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                monitor.interrupt();
-                synchronized (clientes) {
-                    clientes.forEach(HiloCliente::detener);
+            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    monitor.interrupt();
+                    synchronized (clientes) {
+                        for (HiloCliente cliente : clientes) {
+                            cliente.detener();
+                        }
+                    }
+                    LOGGER.info("Servidor detenido correctamente.");
                 }
-                LOGGER.info("Servidor detenido correctamente.");
             }, "apagado-servidor"));
             String ipServidor = "Desconocida";
             try {
@@ -56,25 +62,28 @@ public class Servidor {
 
             while (true) {
                 Socket socketCliente = serverSocket.accept();
-                LOGGER.info("Nueva conexión recibida desde: " + socketCliente.getInetAddress().getHostAddress());
+                LOGGER.log(Level.INFO, "Nueva conexi\u00f3n recibida desde: {0}", socketCliente.getInetAddress().getHostAddress());
 
                 HiloCliente hilo = new HiloCliente(socketCliente, chat);
                 clientes.add(hilo);
                 hilo.start();
             }
         } catch (IOException e) {
-            LOGGER.severe("Error en el servidor: " + e.getMessage());
+            LOGGER.log(Level.SEVERE, "Error en el servidor: {0}", e.getMessage());
         }
     }
 
     private static Thread crearMonitor(Chat chat) {
-        return new Thread(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    Thread.sleep(INTERVALO_MONITOR_MS);
-                    LOGGER.info("Estado del servidor: " + chat.obtenerEstadisticas());
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+        return new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        Thread.sleep(INTERVALO_MONITOR_MS);
+                        LOGGER.log(Level.INFO, "Estado del servidor: {0}", chat.obtenerEstadisticas());
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
                 }
             }
         }, "monitor-servidor");
@@ -101,6 +110,14 @@ public class Servidor {
         for (Handler handler : loggerRaiz.getHandlers()) {
             handler.setFormatter(formatter);
             handler.setLevel(Level.ALL);
+        }
+        try {
+            FileHandler fileHandler = new FileHandler("servidor.log", true);
+            fileHandler.setFormatter(formatter);
+            fileHandler.setLevel(Level.ALL);
+            loggerRaiz.addHandler(fileHandler);
+        } catch (IOException e) {
+            throw new IllegalStateException("No se pudo crear el archivo servidor.log.", e);
         }
         loggerRaiz.setLevel(Level.INFO);
     }

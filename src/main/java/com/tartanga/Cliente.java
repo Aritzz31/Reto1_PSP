@@ -1,6 +1,5 @@
 package com.tartanga;
 
-import javafx.application.Platform;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -14,10 +13,10 @@ public class Cliente {
     private String usuario;
     private Thread hilo;
     private boolean conectado = false;
-    private final MainController controlador;
+    private final ClienteListener listener;
 
-    public Cliente(MainController controlador) {
-        this.controlador = controlador;
+    public Cliente(ClienteListener listener) {
+        this.listener = listener;
     }
 
     public boolean conectar(String ip, int puerto, String usuario) {
@@ -31,26 +30,52 @@ public class Cliente {
 
             enviarMensaje(new Mensaje(Mensaje.Tipo.CONEXION, usuario, "Servidor", "Solicitud de conexión"));
 
-            hilo = new Thread(() -> {
-                try {
-                    while (conectado) {
-                        Mensaje msj = (Mensaje) entrada.readObject();
+            hilo = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        while (conectado) {
+                            Mensaje msj = (Mensaje) entrada.readObject();
 
-                        switch (msj.getTipo()) {
-                            case LISTA_USUARIOS ->
-                                Platform.runLater(() -> controlador.actualizarUsuarios(msj));
-                            case ERROR ->
-                                Platform.runLater(() -> controlador.procesarMensaje(msj));
-                            case DESCONEXION -> {
-                                Platform.runLater(() -> controlador.procesarMensaje(msj));
-                                cerrarConexion();
+                            switch (msj.getTipo()) {
+                                case LISTA_USUARIOS:
+                                    ejecutarHilo(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            listener.actualizarUsuarios(msj);
+                                        }
+                                    });
+                                    break;
+                                case ERROR:
+                                    ejecutarHilo(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            listener.procesarMensaje(msj);
+                                        }
+                                    });
+                                    break;
+                                case DESCONEXION:
+                                    ejecutarHilo(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            listener.procesarMensaje(msj);
+                                        }
+                                    });
+                                    cerrarConexion();
+                                    break;
+                                default:
+                                    ejecutarHilo(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            listener.procesarMensaje(msj);
+                                        }
+                                    });
+                                    break;
                             }
-                            default ->
-                                Platform.runLater(() -> controlador.procesarMensaje(msj));
                         }
+                    } catch (IOException | ClassNotFoundException e) {
+                        cerrarConexion();
                     }
-                } catch (IOException | ClassNotFoundException e) {
-                    cerrarConexion();
                 }
             });
             hilo.setDaemon(true);
@@ -76,7 +101,13 @@ public class Cliente {
                 salida.reset();
             }
         } catch (IOException e) {
-            Platform.runLater(() -> controlador.notificarError("No se pudo enviar el mensaje: " + e.getMessage()));
+            final String error = "No se pudo enviar el mensaje: " + e.getMessage();
+            ejecutarHilo(new Runnable() {
+                @Override
+                public void run() {
+                    listener.notificarError(error);
+                }
+            });
         }
     }
 
@@ -94,9 +125,18 @@ public class Cliente {
             if (socket != null) {
                 socket.close();
             }
-            Platform.runLater(() -> controlador.notificarDesconexion());
+            ejecutarHilo(new Runnable() {
+                @Override
+                public void run() {
+                    listener.notificarDesconexion();
+                }
+            });
         } catch (IOException e) {
             System.err.println("Error al cerrar conexión.");
         }
+    }
+
+    private void ejecutarHilo(Runnable tarea) {
+        javafx.application.Platform.runLater(tarea);
     }
 }

@@ -15,8 +15,11 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.util.Callback;
 
-public class MainController {
+public class MainController implements ClienteListener {
 
     @FXML
     private TextField txtIP;
@@ -50,31 +53,36 @@ public class MainController {
         mensajesObList = FXCollections.observableArrayList();
         lstMensajes.setItems(mensajesObList);
 
-        lstMensajes.setCellFactory(listView -> new ListCell<String>() {
+        lstMensajes.setCellFactory(new Callback<ListView<String>, ListCell<String>>() {
             @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setGraphic(null);
-                    setStyle("");
-                } else {
-                    setText(item);
+            public ListCell<String> call(ListView<String> listView) {
+                return new ListCell<String>() {
+                    @Override
+                    protected void updateItem(String item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty || item == null) {
+                            setText(null);
+                            setGraphic(null);
+                            setStyle("");
+                        } else {
+                            setText(item);
 
-                    if (item.startsWith("Sistema:") || item.startsWith("[Servidor]:")) {
-                        setTextFill(Color.GRAY);
-                        setFont(Font.font("System", FontPosture.ITALIC, 12));
-                    } else if (item.startsWith("[Privado")) {
-                        setTextFill(Color.DARKMAGENTA);
-                        setFont(Font.font("System", FontWeight.BOLD, 12));
-                    } else if (item.startsWith("[Tú]")) {
-                        setTextFill(Color.DARKBLUE);
-                        setFont(Font.font("System", FontWeight.BOLD, 12));
-                    } else {
-                        setTextFill(Color.BLACK);
-                        setFont(Font.font("System", FontWeight.NORMAL, 12));
+                            if (item.startsWith("Sistema:") || item.startsWith("[Servidor]:")) {
+                                setTextFill(Color.GRAY);
+                                setFont(Font.font("System", FontPosture.ITALIC, 12));
+                            } else if (item.startsWith("[Privado")) {
+                                setTextFill(Color.DARKMAGENTA);
+                                setFont(Font.font("System", FontWeight.BOLD, 12));
+                            } else if (item.startsWith("[Tú]")) {
+                                setTextFill(Color.DARKBLUE);
+                                setFont(Font.font("System", FontWeight.BOLD, 12));
+                            } else {
+                                setTextFill(Color.BLACK);
+                                setFont(Font.font("System", FontWeight.NORMAL, 12));
+                            }
+                        }
                     }
-                }
+                };
             }
         });
 
@@ -84,24 +92,62 @@ public class MainController {
         cmbPrivateUser.setItems(usuariosActivos);
         cmbPrivateUser.disableProperty().bind(chkPrivate.disabledProperty().or(chkPrivate.selectedProperty().not()));
 
-        usuariosActivos.addListener((ListChangeListener.Change<? extends String> c) -> {
-            boolean sinUsuarios = usuariosActivos.isEmpty();
-            chkPrivate.setDisable(sinUsuarios);
-            if (sinUsuarios) {
-                chkPrivate.setSelected(false);
+        usuariosActivos.addListener(new ListChangeListener<String>() {
+            @Override
+            public void onChanged(ListChangeListener.Change<? extends String> cambio) {
+                boolean sinUsuarios = usuariosActivos.isEmpty();
+                chkPrivate.setDisable(sinUsuarios);
+                if (sinUsuarios) {
+                    chkPrivate.setSelected(false);
+                }
             }
         });
 
         chkPrivate.setDisable(true);
 
-        btnConnect.setOnAction(e -> conectar());
-        btnDisconnect.setOnAction(e -> desconectar());
-        txtSend.setOnAction(e -> enviarMensaje());
+        btnConnect.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent evento) {
+                conectar();
+            }
+        });
+        btnDisconnect.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent evento) {
+                desconectar();
+            }
+        });
+        txtSend.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent evento) {
+                enviarMensaje();
+            }
+        });
 
-        txtIP.setOnAction(e -> conectar());
-        txtPort.setOnAction(e -> conectar());
-        txtUser.setOnAction(e -> conectar());
-        txtMessage.setOnAction(e -> enviarMensaje());
+        txtIP.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent evento) {
+                conectar();
+            }
+        });
+        txtPort.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent evento) {
+                conectar();
+            }
+        });
+        txtUser.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent evento) {
+                conectar();
+            }
+        });
+        txtMessage.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent evento) {
+                enviarMensaje();
+            }
+        });
 
         estadoInterfaz(false);
     }
@@ -187,12 +233,17 @@ public class MainController {
         }
         boolean soyYo = msj.getRemitente().equals(txtUser.getText());
 
-        String prefix = switch (msj.getTipo()) {
-            case MENSAJE_PRIVADO ->
-                soyYo ? "[Privado para " + msj.getDestinatario() + "]" : "[Privado de " + msj.getRemitente() + "]";
-            default ->
-                soyYo ? "[Tú]" : "[" + msj.getRemitente() + "]";
-        };
+        String prefix;
+        switch (msj.getTipo()) {
+            case MENSAJE_PRIVADO:
+                prefix = soyYo
+                        ? "[Privado para " + msj.getDestinatario() + "]"
+                        : "[Privado de " + msj.getRemitente() + "]";
+                break;
+            default:
+                prefix = soyYo ? "[Tú]" : "[" + msj.getRemitente() + "]";
+                break;
+        }
 
         agregarMensajeUI(prefix + ": " + msj.getContenido());
     }
@@ -201,9 +252,11 @@ public class MainController {
         String seleccionado = cmbPrivateUser.getValue();
         usuariosActivos.clear();
 
-        msj.getUsuariosActivos().stream()
-                .filter(u -> !u.equals(txtUser.getText()))
-                .forEach(usuariosActivos::add);
+        for (String usuario : msj.getUsuariosActivos()) {
+            if (!usuario.equals(txtUser.getText())) {
+                usuariosActivos.add(usuario);
+            }
+        }
 
         if (!usuariosActivos.isEmpty()) {
             cmbPrivateUser.setPromptText("");

@@ -43,9 +43,11 @@ public class Chat {
             return ResultadoConexion.USUARIO_EN_USO;
         }
 
-        historial.forEach(msj -> enviar(out, msj));
+        for (Mensaje msj : historial) {
+            enviar(out, msj);
+        }
         enviarListaUsuariosActivos();
-        LOGGER.info(() -> "Cliente conectado: " + usuario + " (" + clientes.size() + "/" + maxClientes + ")");
+        LOGGER.log(Level.INFO, "Cliente conectado: {0} ({1}/{2})", new Object[]{usuario, clientes.size(), maxClientes});
         return ResultadoConexion.ACEPTADA;
     }
 
@@ -55,7 +57,7 @@ public class Chat {
 
     public synchronized void eliminarCliente(String usuario) {
         if (clientes.remove(usuario) != null) {
-            LOGGER.info(() -> "Cliente desconectado: " + usuario + " (" + clientes.size() + "/" + maxClientes + ")");
+            LOGGER.log(Level.INFO, "Cliente desconectado: {0} ({1}/{2})", new Object[]{usuario, clientes.size(), maxClientes});
             enviarListaUsuariosActivos();
         }
     }
@@ -63,7 +65,6 @@ public class Chat {
     public synchronized void enviarMensajePublico(Mensaje msj) {
         historial.add(msj);
         ultimoMensaje = System.currentTimeMillis();
-        LOGGER.info(() -> "Mensaje público de " + msj.getRemitente());
         difusion(msj);
     }
 
@@ -75,7 +76,6 @@ public class Chat {
             return;
         }
         ultimoMensaje = System.currentTimeMillis();
-        LOGGER.info(() -> "Mensaje privado de " + msj.getRemitente() + " para " + msj.getDestinatario());
         enviar(destinatario, msj);
         if (!msj.getRemitente().equals(msj.getDestinatario())) {
             enviar(remitente, msj);
@@ -89,7 +89,9 @@ public class Chat {
     }
 
     private synchronized void difusion(Mensaje msj) {
-        clientes.values().forEach(out -> enviar(out, msj));
+        for (ObjectOutputStream out : clientes.values()) {
+            enviar(out, msj);
+        }
     }
 
     private void enviarError(ObjectOutputStream out, String contenido) {
